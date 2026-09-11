@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}工具 - 资源聚合平台{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="section">
+        <div class="section-header">
+            <h2 class="section-title">工具</h2>
+        </div>
+
+        <div class="category-nav">
+            <a href="{% url 'core:tools' %}" class="category-chip {% if not current_category %}active{% endif %}">全部</a>
+            <a href="?category=search" class="category-chip {% if current_category == 'search' %}active{% endif %}">搜索工具</a>
+            <a href="?category=ai" class="category-chip {% if current_category == 'ai' %}active{% endif %}">AI工具</a>
+            <a href="?category=dev" class="category-chip {% if current_category == 'dev' %}active{% endif %}">开发工具</a>
+            <a href="?category=design" class="category-chip {% if current_category == 'design' %}active{% endif %}">设计工具</a>
+            <a href="?category=ops" class="category-chip {% if current_category == 'ops' %}active{% endif %}">运维工具</a>
+            <a href="?category=convert" class="category-chip {% if current_category == 'convert' %}active{% endif %}">在线转换</a>
+            <a href="?category=other" class="category-chip {% if current_category == 'other' %}active{% endif %}">其他</a>
+        </div>
+
+        <h3 style="font-size:16px; color:var(--gray-700); margin:24px 0 16px;">搜索工具专区</h3>
+        <div class="grid-4" style="margin-block-end:32px;">
+            <!-- 百度搜索：整个卡片可点击跳转 -->
+            <a href="https://www.baidu.com" target="_blank" class="tool-card">
+                <div class="tool-icon">百</div>
+                <div class="tool-name">百度搜索</div>
+            </a>
+            <!-- 谷歌搜索：整个卡片可点击跳转 -->
+            <a href="https://www.google.com" target="_blank" class="tool-card">
+                <div class="tool-icon">谷</div>
+                <div class="tool-name">谷歌搜索</div>
+            </a>
+            <a href="https://github.com/search" target="_blank" class="tool-card">
+                <div class="tool-icon">G</div>
+                <div class="tool-name">GitHub</div>
+            </a>
+        </div>
+
+        <h3 style="font-size:16px; color:var(--gray-700); margin-bottom:16px;">AI工具专区</h3>
+        <div class="grid-4" style="margin-bottom:32px;">
+            <!-- 豆包AI -->
+            <a href="https://www.doubao.com" target="_blank" class="tool-card">
+                <div class="tool-icon" style="background:#FFF3E0; color:#EF6C00;">豆</div>
+                <div class="tool-name">豆包AI</div>
+            </a>
+            <!-- DeepSeek AI -->
+            <a href="https://chat.deepseek.com" target="_blank" class="tool-card">
+                <div class="tool-icon" style="background:#E8F5E9; color:#2E7D32;">D</div>
+                <div class="tool-name">DeepSeek AI</div>
+            </a>
+            <a href="https://chat.openai.com/" target="_blank" class="tool-card">
+                <div class="tool-icon" style="background:#c4c5c4; color:#6e746e;">C</div>
+                <div class="tool-name">ChatGPT</div>
+            </a>
+            <a href="https://www.qianwen.com/" target="_blank" class="tool-card">
+                <div class="tool-icon" style="background:#95a8ec; color:#687beb;">千</div>
+                <div class="tool-name">通义千问</div>
+            </a>
+        </div>
+        <h3 style="font-size:16px; color:var(--gray-700); margin-bottom:16px;">在线转换工具专区</h3>
+        <div class="grid-4" style="margin-block-end:32px;">
+           <a href="https://www.jyshare.com/front-end/10270/" target="_blank" class="tool-card">
+              <div class="tool-icon" style="background:transparent; overflow:hidden; padding:0; width:48px; height:48px;">
+                 <img src="https://www.jyshare.com/wp-content/uploads/2026/01/cardimage-runoob.png"  style="width:100%; height:100%; object-fit:contain;">
+              </div>
+              <div class="tool-name" style="font-size:12px;">图片卡片编辑器</div>
+           </a>
+           <a href="https://www.jyshare.com/front-end/10433/" target="_blank" class="tool-card">
+              <div class="tool-icon" style="background:transparent; overflow:hidden; padding:0; width:48px; height:48px;">
+                 <img src="https://www.jyshare.com/wp-content/uploads/2026/08/crop_4804453.png" style="width:100%; height:100%; object-fit:contain;">
+              </div>
+              <div class="tool-name" style="font-size:12px;">在线图片裁剪</div>
+           </a>
+        </div>
+
+
+        <h3 style="font-size:16px; color:var(--gray-700); margin-bottom:16px;">拓展工具</h3>
+        <div class="grid-4" style="margin-bottom:32px;">
+            <!-- 预留位置：不可点击，无跳转 -->
+            <div class="tool-card" style="opacity:0.6; cursor:default;">
+                <div class="tool-icon" style="background:var(--gray-100); color:var(--gray-500);">&#9881;</div>
+                <div class="tool-name">开发工具</div>
+            </div>
+            <div class="tool-card" style="opacity:0.6; cursor:default;">
+                <div class="tool-icon" style="background:var(--gray-100); color:var(--gray-500);">&#9998;</div>
+                <div class="tool-name">设计工具</div>
+            </div>
+            <div class="tool-card" style="opacity:0.6; cursor:default;">
+                <div class="tool-icon" style="background:var(--gray-100); color:var(--gray-500);">&#9881;</div>
+                <div class="tool-name">运维工具</div>
+            </div>
+        </div>
+
+        {% if tools %}
+        <h3 style="font-size:16px; color:var(--gray-700); margin-bottom:16px;">全部工具</h3>
+        <div class="grid-4">
+            {% for tool in tools %}
+            <!-- 动态工具：整个卡片可点击跳转 -->
+            <a href="{{ tool.url }}" target="_blank" class="tool-card">
+                <div class="tool-icon">{{ tool.name|slice:":1" }}</div>
+                <div class="tool-name">
+                    {{ tool.name }}
+                    {% if tool.is_hot %}<span class="tag tag-hot">热门</span>{% endif %}
+                    {% if tool.is_new %}<span class="tag tag-new">新增</span>{% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

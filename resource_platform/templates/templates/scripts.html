@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}脚本仓库 - 资源聚合平台{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="section">
+        <div class="section-header">
+            <h2 class="section-title">脚本仓库</h2>
+            {% if user.is_superuser %}
+            <a href="{% url 'core:script_upload' %}" class="btn btn-primary">＋ 上传脚本</a>
+            {% endif %}
+        </div>
+
+        <div class="grid-3">
+            {% for script in scripts %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-title">{{ script.name }}</div>
+                    <div class="card-text">适用场景：{{ script.scene }}</div>
+                </div>
+                <div class="card-footer">
+                    <span class="tag">v{{ script.version }}</span>
+                    <span>{{ script.updated_at|date:"Y-m-d" }}</span>
+                </div>
+                <div style="display:flex; gap:8px; padding: 0 20px 16px;">
+                    <a href="{% url 'core:script_detail' script.pk %}" class="btn btn-outline btn-sm" style="flex:1; justify-content:center;">查看详情</a>
+                    {% if user.is_superuser %}
+                    <a href="{% url 'core:script_edit' script.pk %}" class="btn btn-ghost btn-sm" style="flex:1; justify-content:center;">编辑</a>
+                    <a href="{% url 'core:script_download' script.pk %}" class="btn btn-primary btn-sm" style="flex:1; justify-content:center;">立即下载</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-body" style="text-align:center; color: var(--gray-500); padding: 60px;">
+                    {% if user.is_superuser %}
+                    暂无脚本，<a href="{% url 'core:script_upload' %}" style="color: var(--primary-blue);">上传第一个脚本</a>
+                    {% else %}
+                    暂无脚本
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

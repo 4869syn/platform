@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ doc.title }} - 知识文库 - 资源聚合平台{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="section">
+        <div style="margin-bottom: 24px;">
+            <a href="{% url 'core:knowledge' %}" class="btn btn-ghost btn-sm">← 返回知识文库</a>
+        </div>
+
+        <div class="card" style="margin-bottom: 24px;">
+            <div class="card-body">
+                <h1 style="font-size: 24px; margin-bottom: 12px;">{{ doc.title }}</h1>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+                    <span class="tag">{{ doc.doc_type|upper }}</span>
+                    {% if doc.category %}
+                        <span class="tag">{{ doc.category }}</span>
+                    {% endif %}
+                    <span style="color: var(--gray-500); font-size: 14px;">上传时间：{{ doc.uploaded_at|date:"Y-m-d H:i" }}</span>
+                    <span style="color: var(--gray-500); font-size: 14px;">浏览量：{{ doc.views }}</span>
+                </div>
+
+                {% if doc.summary %}
+                    <p style="color: var(--gray-700); line-height: 1.7; margin-bottom: 20px;">{{ doc.summary }}</p>
+                {% endif %}
+
+                <div style="display: flex; gap: 12px;">
+                    {% if user.is_superuser %}
+                        <a href="{% url 'core:doc_download' doc.pk %}" class="btn btn-primary">下载文档</a>
+                        <a href="{% url 'core:doc_edit' doc.pk %}" class="btn btn-outline"> 在线编辑</a>
+                        <button type="button" class="btn btn-ghost btn-danger-text" onclick="confirmDelete('{% url 'core:doc_delete' doc.pk %}', '确定要删除文档「{{ doc.title }}」吗？此操作不可恢复。')">删除</button>
+                    {% else %}
+                        <span class="btn btn-ghost" style="opacity: 0.6; cursor: not-allowed;">下载文档（需管理员权限）</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if preview_html %}
+            <div class="card">
+                <div class="card-body">
+                    <h2 style="font-size: 18px; margin-bottom: 16px;">文档内容预览</h2>
+                    <div class="doc-preview" style="line-height: 1.8; color: var(--gray-800);">
+                        {{ preview_html|safe }}
+                    </div>
+                </div>
+            </div>
+        {% elif doc.file %}
+            <div class="card">
+                <div class="card-body" style="text-align: center; padding: 60px 20px;">
+                    <p style="color: var(--gray-500); margin-bottom: 16px;">该文档暂不支持在线预览</p>
+                    {% if user.is_superuser %}
+                        <p style="color: var(--gray-400); font-size: 14px; margin-bottom: 24px;">请点击上方"下载文档"按钮下载后查看</p>
+                        <a href="{% url 'core:doc_download' doc.pk %}" class="btn btn-primary">下载文档</a>
+                    {% else %}
+                        <p style="color: var(--gray-400); font-size: 14px;">下载功能需要管理员权限</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmDelete(url, message) {
+        if (confirm(message)) {
+            var form = document.createElement('form');
+            form.method = 'post';
+            form.action = url;
+            var csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = 'csrfmiddlewaretoken';
+            csrf.value = '{{ csrf_token }}';
+            form.appendChild(csrf);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
+{% endblock %}
