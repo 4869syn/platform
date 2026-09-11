@@ -1,7 +1,8 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden
 from django.core.paginator import Paginator
 from django.utils.html import escape
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from functools import wraps
 from .models import Banner, KnowledgeDoc, Script, Note, Tool, Announcement
@@ -259,3 +260,244 @@ def tool_list(request):
         'active_page': 'tools',
     }
     return render(request, 'tools.html', context)
+
+
+# ==================== 知识文库：上传 / 在线编辑 ====================
+
+def _get_doc_type(filename):
+    ext = os.path.splitext(filename)[1].lower().lstrip('.')
+    if ext == 'docx':
+        return 'docx'
+    if ext == 'pdf':
+        return 'pdf'
+    return None
+
+
+@superuser_required
+def doc_upload(request):
+    """上传新文档"""
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        category = request.POST.get('category', '').strip()
+        summary = request.POST.get('summary', '').strip()
+        upload_file = request.FILES.get('file')
+
+        if not title or not upload_file:
+            messages.error(request, '文档标题和文件不能为空。')
+        else:
+            doc_type = _get_doc_type(upload_file.name)
+            if not doc_type:
+                messages.error(request, '仅支持上传 .docx 或 .pdf 格式的文档。')
+            else:
+                doc = KnowledgeDoc.objects.create(
+                    title=title,
+                    doc_type=doc_type,
+                    file=upload_file,
+                    summary=summary,
+                    category=category,
+                )
+                messages.success(request, '文档上传成功！')
+                return redirect('core:doc_detail', pk=doc.pk)
+
+    return render(request, 'doc_form.html', {
+        'active_page': 'knowledge',
+        'is_edit': False,
+    })
+
+
+@superuser_required
+def doc_edit(request, pk):
+    """在线编辑文档信息（含替换文件）"""
+    doc = get_object_or_404(KnowledgeDoc, pk=pk)
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        category = request.POST.get('category', '').strip()
+        summary = request.POST.get('summary', '').strip()
+        upload_file = request.FILES.get('file')
+
+        if not title:
+            messages.error(request, '文档标题不能为空。')
+        else:
+            doc.title = title
+            doc.category = category
+            doc.summary = summary
+            if upload_file:
+                doc_type = _get_doc_type(upload_file.name)
+                if not doc_type:
+                    messages.error(request, '仅支持上传 .docx 或 .pdf 格式的文档。')
+                    return render(request, 'doc_form.html', {
+                        'doc': doc, 'active_page': 'knowledge', 'is_edit': True,
+                    })
+                # 删除旧文件
+                if doc.file:
+                    doc.file.delete(save=False)
+                doc.file = upload_file
+                doc.doc_type = doc_type
+            doc.save()
+            messages.success(request, '文档信息已更新！')
+            return redirect('core:doc_detail', pk=doc.pk)
+
+    return render(request, 'doc_form.html', {
+        'doc': doc,
+        'active_page': 'knowledge',
+        'is_edit': True,
+    })
+
+
+@superuser_required
+def doc_delete(request, pk):
+    """删除文档"""
+    doc = get_object_or_404(KnowledgeDoc, pk=pk)
+    if request.method == 'POST':
+        if doc.file:
+            doc.file.delete(save=False)
+        doc.delete()
+        messages.success(request, '文档已删除。')
+    return redirect('core:knowledge')
+
+
+# ==================== 脚本仓库：上传 / 编辑 ====================
+
+@superuser_required
+def script_upload(request):
+    """上传新脚本"""
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        scene = request.POST.get('scene', '').strip()
+        version = request.POST.get('version', '').strip() or '1.0.0'
+        tutorial = request.POST.get('tutorial', '').strip()
+        upload_file = request.FILES.get('file')
+
+        if not name or not upload_file:
+            messages.error(request, '脚本名称和文件不能为空。')
+        else:
+            script = Script.objects.create(
+                name=name,
+                scene=scene,
+                version=version,
+                tutorial=tutorial,
+                file=upload_file,
+            )
+            messages.success(request, '脚本上传成功！')
+            return redirect('core:script_detail', pk=script.pk)
+
+    return render(request, 'script_form.html', {
+        'active_page': 'scripts',
+        'is_edit': False,
+    })
+
+
+@superuser_required
+def script_edit(request, pk):
+    """在线编辑脚本信息（含替换文件）"""
+    script = get_object_or_404(Script, pk=pk)
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        scene = request.POST.get('scene', '').strip()
+        version = request.POST.get('version', '').strip() or '1.0.0'
+        tutorial = request.POST.get('tutorial', '').strip()
+        upload_file = request.FILES.get('file')
+
+        if not name:
+            messages.error(request, '脚本名称不能为空。')
+        else:
+            script.name = name
+            script.scene = scene
+            script.version = version
+            script.tutorial = tutorial
+            if upload_file:
+                if script.file:
+                    script.file.delete(save=False)
+                script.file = upload_file
+            script.save()
+            messages.success(request, '脚本信息已更新！')
+            return redirect('core:script_detail', pk=script.pk)
+
+    return render(request, 'script_form.html', {
+        'script': script,
+        'active_page': 'scripts',
+        'is_edit': True,
+    })
+
+
+@superuser_required
+def script_delete(request, pk):
+    """删除脚本"""
+    script = get_object_or_404(Script, pk=pk)
+    if request.method == 'POST':
+        if script.file:
+            script.file.delete(save=False)
+        script.delete()
+        messages.success(request, '脚本已删除。')
+    return redirect('core:scripts')
+
+
+# ==================== 笔记分享：新建 / 在线编辑 ====================
+
+@superuser_required
+def note_create(request):
+    """在线新建笔记"""
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        tag = request.POST.get('tag', 'tech')
+        intro = request.POST.get('intro', '').strip()
+        content = request.POST.get('content', '').strip()
+
+        if not title or not content:
+            messages.error(request, '笔记标题和内容不能为空。')
+        else:
+            note = Note.objects.create(
+                title=title,
+                tag=tag if tag in dict(Note.TAG_CHOICES) else 'tech',
+                intro=intro,
+                content=content,
+                author=request.user.username,
+            )
+            messages.success(request, '笔记发布成功！')
+            return redirect('core:note_detail', pk=note.pk)
+
+    return render(request, 'note_form.html', {
+        'active_page': 'notes',
+        'is_edit': False,
+    })
+
+
+@superuser_required
+def note_edit(request, pk):
+    """在线编辑笔记"""
+    note = get_object_or_404(Note, pk=pk)
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        tag = request.POST.get('tag', 'tech')
+        intro = request.POST.get('intro', '').strip()
+        content = request.POST.get('content', '').strip()
+
+        if not title or not content:
+            messages.error(request, '笔记标题和内容不能为空。')
+        else:
+            note.title = title
+            note.tag = tag if tag in dict(Note.TAG_CHOICES) else note.tag
+            note.intro = intro
+            note.content = content
+            note.save()
+            messages.success(request, '笔记已更新！')
+            return redirect('core:note_detail', pk=note.pk)
+
+    return render(request, 'note_form.html', {
+        'note': note,
+        'active_page': 'notes',
+        'is_edit': True,
+    })
+
+
+@superuser_required
+def note_delete(request, pk):
+    """删除笔记"""
+    note = get_object_or_404(Note, pk=pk)
+    if request.method == 'POST':
+        note.delete()
+        messages.success(request, '笔记已删除。')
+    return redirect('core:notes')
