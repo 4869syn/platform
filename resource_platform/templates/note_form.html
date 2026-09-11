@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_edit %}编辑笔记{% else %}分享笔记{% endif %} - 笔记分享 - 资源聚合平台{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="detail-page form-page">
+        <a href="{% if is_edit %}{% url 'core:note_detail' note.pk %}{% else %}{% url 'core:notes' %}{% endif %}" class="btn btn-ghost btn-sm back-link">
+            &larr; {% if is_edit %}返回笔记详情{% else %}返回笔记分享{% endif %}
+        </a>
+
+        <h1 class="form-title">
+            {% if is_edit %}✏️ 编辑笔记{% else %}📝 分享笔记{% endif %}
+        </h1>
+        <p class="form-subtitle">
+            {% if is_edit %}修改笔记内容后保存，更新将立即生效{% else %}在线编写并分享你的技术、办公或生活笔记{% endif %}
+        </p>
+
+        {% if messages %}
+        <div class="message-list">
+            {% for message in messages %}
+            <div class="message message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" class="resource-form" id="noteForm">
+            {% csrf_token %}
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="id_title">笔记标题 <span class="required">*</span></label>
+                    <input type="text" id="id_title" name="title" class="form-input" required
+                           value="{% if is_edit %}{{ note.title }}{% endif %}"
+                           placeholder="请输入笔记标题">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="id_tag">分类标签</label>
+                    <select id="id_tag" name="tag" class="form-input">
+                        <option value="tech" {% if is_edit and note.tag == 'tech' %}selected{% endif %}>技术</option>
+                        <option value="office" {% if is_edit and note.tag == 'office' %}selected{% endif %}>办公</option>
+                        <option value="tool" {% if is_edit and note.tag == 'tool' %}selected{% endif %}>工具</option>
+                        <option value="life" {% if is_edit and note.tag == 'life' %}selected{% endif %}>生活</option>
+                        <option value="other" {% if is_edit and note.tag == 'other' %}selected{% endif %}>其他</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_intro">简短导读</label>
+                <input type="text" id="id_intro" name="intro" class="form-input"
+                       value="{% if is_edit %}{{ note.intro }}{% endif %}"
+                       placeholder="一句话概括笔记内容，将显示在列表卡片中（可选）">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">笔记内容 <span class="required">*</span></label>
+                <div class="editor-toolbar" id="editorToolbar">
+                    <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="h1" title="标题1">H1</button>
+                    <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="h2" title="标题2">H2</button>
+                    <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="h3" title="标题3">H3</button>
+                    <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="p" title="正文">正文</button>
+                    <span class="editor-divider"></span>
+                    <button type="button" class="editor-btn" data-cmd="bold" title="加粗"><strong>B</strong></button>
+                    <button type="button" class="editor-btn" data-cmd="italic" title="斜体"><em>I</em></button>
+                    <button type="button" class="editor-btn" data-cmd="underline" title="下划线"><u>U</u></button>
+                    <button type="button" class="editor-btn" data-cmd="strikeThrough" title="删除线"><s>S</s></button>
+                    <span class="editor-divider"></span>
+                    <button type="button" class="editor-btn" data-cmd="insertUnorderedList" title="无序列表">&bull; 列表</button>
+                    <button type="button" class="editor-btn" data-cmd="insertOrderedList" title="有序列表">1. 列表</button>
+                    <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="blockquote" title="引用">&ldquo; 引用</button>
+                    <button type="button" class="editor-btn" data-cmd="insertHorizontalRule" title="分隔线">&mdash; 分隔线</button>
+                    <span class="editor-divider"></span>
+                    <button type="button" class="editor-btn" data-cmd="removeFormat" title="清除格式">✕ 清除格式</button>
+                </div>
+                <div id="id_content" class="rich-editor" contenteditable="true"
+                     data-placeholder="在此编写笔记正文，可使用上方工具栏设置标题、加粗等格式...">{% if is_edit %}{{ note.content|safe }}{% endif %}</div>
+                <input type="hidden" name="content" id="id_content_input" required>
+                <div class="form-hint">内容将按编辑时的格式原样展示在笔记详情页</div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    {% if is_edit %}保存修改{% else %}发布笔记{% endif %}
+                </button>
+                <a href="{% if is_edit %}{% url 'core:note_detail' note.pk %}{% else %}{% url 'core:notes' %}{% endif %}" class="btn btn-ghost btn-lg">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        var editor = document.getElementById('id_content');
+        var toolbar = document.getElementById('editorToolbar');
+        var form = document.getElementById('noteForm');
+        var contentInput = document.getElementById('id_content_input');
+        if (!editor || !toolbar || !form || !contentInput) return;
+
+        // 工具栏命令
+        toolbar.addEventListener('click', function (e) {
+            var btn = e.target.closest('.editor-btn');
+            if (!btn) return;
+            e.preventDefault();
+            var cmd = btn.getAttribute('data-cmd');
+            var value = btn.getAttribute('data-value') || null;
+            editor.focus();
+            document.execCommand(cmd, false, value);
+            syncContent();
+        });
+
+        // 提交前同步内容到隐藏 input
+        function syncContent() {
+            var html = editor.innerHTML.trim();
+            // 空内容（只有空标签/换行）视为空
+            var tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            if (!tmp.textContent.trim() && !tmp.querySelector('img')) {
+                html = '';
+            }
+            contentInput.value = html;
+        }
+
+        editor.addEventListener('input', syncContent);
+        editor.addEventListener('blur', syncContent);
+
+        form.addEventListener('submit', function (e) {
+            syncContent();
+            if (!contentInput.value) {
+                e.preventDefault();
+                editor.classList.add('editor-empty');
+                editor.focus();
+                alert('笔记内容不能为空。');
+            }
+        });
+
+        // 占位符显示控制
+        function updatePlaceholder() {
+            if (editor.textContent.trim() || editor.querySelector('img')) {
+                editor.classList.remove('is-empty');
+            } else {
+                editor.classList.add('is-empty');
+            }
+        }
+        editor.addEventListener('input', updatePlaceholder);
+        updatePlaceholder();
+        syncContent();
+    })();
+</script>
+{% endblock %}

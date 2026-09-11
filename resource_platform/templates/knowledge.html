@@ -8,7 +8,7 @@
         <div class="section-header">
             <h2 class="section-title">知识文库</h2>
             {% if user.is_superuser %}
-            <a href="/admin/core/knowledgedoc/add/" class="btn btn-primary">上传文档</a>
+            <a href="{% url 'core:doc_upload' %}" class="btn btn-primary">＋ 上传文档</a>
             {% endif %}
         </div>
 
@@ -43,6 +43,7 @@
                 <div style="padding: 0 20px 16px; display: flex; gap: 8px;">
                     <a href="{% url 'core:doc_detail' doc.pk %}" class="btn btn-outline btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">查看详情</a>
                     {% if user.is_superuser %}
+                    <a href="{% url 'core:doc_edit' doc.pk %}" class="btn btn-ghost btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">编辑</a>
                     <a href="{% url 'core:doc_download' doc.pk %}" class="btn btn-primary btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">下载</a>
                     {% endif %}
                 </div>

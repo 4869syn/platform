@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_edit %}编辑脚本{% else %}上传脚本{% endif %} - 脚本仓库 - 资源聚合平台{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="detail-page form-page">
+        <a href="{% if is_edit %}{% url 'core:script_detail' script.pk %}{% else %}{% url 'core:scripts' %}{% endif %}" class="btn btn-ghost btn-sm back-link">
+            &larr; {% if is_edit %}返回脚本详情{% else %}返回脚本仓库{% endif %}
+        </a>
+
+        <h1 class="form-title">
+            {% if is_edit %}编辑脚本{% else %}上传脚本{% endif %}
+        </h1>
+        <p class="form-subtitle">
+            {% if is_edit %}修改脚本信息，或上传新文件替换当前脚本{% else %}将运维 / 工具脚本上传到脚本仓库，并附上使用教程{% endif %}
+        </p>
+
+        {% if messages %}
+        <div class="message-list">
+            {% for message in messages %}
+            <div class="message message-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="resource-form">
+            {% csrf_token %}
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="id_name">脚本名称 <span class="required">*</span></label>
+                    <input type="text" id="id_name" name="name" class="form-input" required
+                           value="{% if is_edit %}{{ script.name }}{% endif %}"
+                           placeholder="例如：center_tool.sh">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="id_version">版本号</label>
+                    <input type="text" id="id_version" name="version" class="form-input"
+                           value="{% if is_edit %}{{ script.version }}{% else %}1.0.0{% endif %}"
+                           placeholder="例如：1.0.0">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_scene">适用场景</label>
+                <input type="text" id="id_scene" name="scene" class="form-input"
+                       value="{% if is_edit %}{{ script.scene }}{% endif %}"
+                       placeholder="例如：服务器巡检 / 日志清理 / 批量部署">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_file">
+                    {% if is_edit %}替换文件<span class="form-hint-inline">（留空则保留原文件）</span>{% else %}选择脚本文件 <span class="required">*</span>{% endif %}
+                </label>
+                <div class="file-upload-area" id="fileUploadArea">
+                    <input type="file" id="id_file" name="file" class="file-input"
+                           {% if not is_edit %}required{% endif %}>
+                    <div class="file-upload-placeholder" id="filePlaceholder">
+                        <div class="file-upload-icon">🖥️</div>
+                        <div class="file-upload-text">
+                            {% if is_edit %}
+                                点击或拖拽文件到此处替换
+                            {% else %}
+                                点击或拖拽脚本文件到此处
+                            {% endif %}
+                        </div>
+                        <div class="file-upload-hint">支持 .sh / .py / .bat / .ps1 等脚本文件</div>
+                    </div>
+                    <div class="file-upload-info" id="fileInfo" style="display:none;">
+                        <span class="file-upload-name" id="fileName"></span>
+                        <button type="button" class="file-remove-btn" id="fileRemoveBtn" title="移除文件">&times;</button>
+                    </div>
+                </div>
+                {% if is_edit and script.file %}
+                <div class="current-file">
+                    当前文件：{{ script.file.name|cut:"scripts/" }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_tutorial">使用教程</label>
+                <textarea id="id_tutorial" name="tutorial" class="form-input form-textarea form-textarea-code" rows="8"
+                          placeholder="在此编写脚本的使用教程，例如：&#10;1. 上传脚本到目标服务器&#10;2. chmod +x center_tool.sh&#10;3. ./center_tool.sh --check">{% if is_edit %}{{ script.tutorial }}{% endif %}</textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    {% if is_edit %}保存修改{% else %}立即上传{% endif %}
+                </button>
+                <a href="{% if is_edit %}{% url 'core:script_detail' script.pk %}{% else %}{% url 'core:scripts' %}{% endif %}" class="btn btn-ghost btn-lg">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        var area = document.getElementById('fileUploadArea');
+        if (!area) return;
+        var input = document.getElementById('id_file');
+        var placeholder = document.getElementById('filePlaceholder');
+        var info = document.getElementById('fileInfo');
+        var nameEl = document.getElementById('fileName');
+        var removeBtn = document.getElementById('fileRemoveBtn');
+
+        function showFile(file) {
+            if (!file) return;
+            nameEl.textContent = file.name + '（' + (file.size / 1024).toFixed(1) + ' KB）';
+            placeholder.style.display = 'none';
+            info.style.display = 'flex';
+        }
+
+        input.addEventListener('change', function () {
+            if (input.files.length) { showFile(input.files[0]); }
+        });
+
+        removeBtn.addEventListener('click', function () {
+            input.value = '';
+            info.style.display = 'none';
+            placeholder.style.display = 'block';
+        });
+
+        // 拖拽支持
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            area.addEventListener(evt, function (e) {
+                e.preventDefault();
+                area.classList.add('dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(function (evt) {
+            area.addEventListener(evt, function (e) {
+                e.preventDefault();
+                area.classList.remove('dragover');
+            });
+        });
+        area.addEventListener('drop', function (e) {
+            if (e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                showFile(input.files[0]);
+            }
+        });
+    })();
+</script>
+{% endblock %}

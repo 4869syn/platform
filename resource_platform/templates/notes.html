@@ -7,7 +7,7 @@
     <section class="section">
         <div class="section-header">
             <h2 class="section-title">笔记分享</h2>
-            <a href="/admin/core/note/add/" class="btn btn-primary">分享笔记</a>
+            <a href="{% url 'core:note_create' %}" class="btn btn-primary">＋ 分享笔记</a>
         </div>
 
         <div class="category-nav">
@@ -30,14 +30,17 @@
                     <span class="tag">{{ note.get_tag_display }}</span>
                     <span>{{ note.published_at|date:"Y-m-d" }}</span>
                 </div>
-                <div style="padding: 0 20px 16px;">
-                    <a href="{% url 'core:note_detail' note.pk %}" class="btn btn-outline btn-sm" style="width:100%; justify-content:center;">阅读全文</a>
+                <div style="padding: 0 20px 16px; display: flex; gap: 8px;">
+                    <a href="{% url 'core:note_detail' note.pk %}" class="btn btn-outline btn-sm" style="flex:1; justify-content:center;">阅读全文</a>
+                    {% if user.is_superuser %}
+                    <a href="{% url 'core:note_edit' note.pk %}" class="btn btn-ghost btn-sm" style="flex:1; justify-content:center;">编辑</a>
+                    {% endif %}
                 </div>
             </div>
             {% empty %}
             <div class="card" style="grid-column: 1 / -1;">
                 <div class="card-body" style="text-align:center; color: var(--gray-500); padding: 60px;">
-                    暂无笔记，<a href="/admin/core/note/add/" style="color: var(--primary-blue);">分享第一篇笔记</a>
+                    暂无笔记，<a href="{% url 'core:note_create' %}" style="color: var(--primary-blue);">分享第一篇笔记</a>
                 </div>
             </div>
             {% endfor %}
