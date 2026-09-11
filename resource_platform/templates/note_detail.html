@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ note.title }} - 笔记分享{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="detail-page">
+        <a href="{% url 'core:notes' %}" style="color:var(--primary-blue); font-size:14px;">← 返回笔记列表</a>
+        <h1 style="margin-top:16px;">{{ note.title }}</h1>
+        <div class="detail-meta">
+            <span class="tag">{{ note.get_tag_display }}</span>
+            <span>作者：{{ note.author }}</span>
+            <span>发布：{{ note.published_at|date:"Y-m-d H:i" }}</span>
+        </div>
+
+        {% if note.intro %}
+        <div style="background:var(--primary-blue-light); padding:16px; border-radius:var(--radius-md); margin-bottom:24px; color:var(--gray-700); font-size:15px;">
+            <strong>导读：</strong>{{ note.intro }}
+        </div>
+        {% endif %}
+
+        <div class="detail-content" style="white-space: pre-wrap;">{{ note.content }}</div>
+
+        <div style="margin-top:32px; padding-top:24px; border-top:1px solid var(--gray-200);">
+            <a href="{% url 'core:notes' %}" class="btn btn-ghost">返回列表</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
