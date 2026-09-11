@@ -59,7 +59,7 @@
             <div class="section-actions">
                 <a href="{% url 'core:knowledge' %}" class="btn btn-outline btn-sm">查看全部</a>
                 {% if user.is_superuser %}
-                <a href="/admin/core/knowledgedoc/add/" class="btn btn-primary btn-sm">上传文档</a>
+                <a href="{% url 'core:doc_upload' %}" class="btn btn-primary btn-sm">上传文档</a>
                 {% endif %}
             </div>
         </div>
@@ -79,7 +79,7 @@
             <div class="card" style="grid-column: 1 / -1;">
                 <div class="card-body" style="text-align:center; color: var(--gray-500); padding: 40px;">
                     {% if user.is_superuser %}
-                    暂无文档，<a href="/admin/core/knowledgedoc/add/" style="color: var(--primary-blue);">上传第一篇文档</a>
+                    暂无文档，<a href="{% url 'core:doc_upload' %}" style="color: var(--primary-blue);">上传第一篇文档</a>
                     {% else %}
                     暂无文档
                     {% endif %}
@@ -95,7 +95,7 @@
             <div class="section-actions">
                 <a href="{% url 'core:scripts' %}" class="btn btn-outline btn-sm">查看全部</a>
                 {% if user.is_superuser %}
-                <a href="/admin/core/script/add/" class="btn btn-primary btn-sm">上传脚本</a>
+                <a href="{% url 'core:script_upload' %}" class="btn btn-primary btn-sm">上传脚本</a>
                 {% endif %}
             </div>
         </div>
@@ -115,7 +115,7 @@
             <div class="card" style="grid-column: 1 / -1;">
                 <div class="card-body" style="text-align:center; color: var(--gray-500); padding: 40px;">
                     {% if user.is_superuser %}
-                    暂无脚本，<a href="/admin/core/script/add/" style="color: var(--primary-blue);">上传第一个脚本</a>
+                    暂无脚本，<a href="{% url 'core:script_upload' %}" style="color: var(--primary-blue);">上传第一个脚本</a>
                     {% else %}
                     暂无脚本
                     {% endif %}
@@ -131,7 +131,7 @@
             <div class="section-actions">
                 <a href="{% url 'core:notes' %}" class="btn btn-outline btn-sm">浏览全部笔记</a>
                 {% if user.is_superuser %}
-                <a href="/admin/core/note/add/" class="btn btn-primary btn-sm">分享笔记</a>
+                <a href="{% url 'core:note_create' %}" class="btn btn-primary btn-sm">分享笔记</a>
                 {% endif %}
             </div>
         </div>
@@ -151,7 +151,7 @@
             <div class="card" style="grid-column: 1 / -1;">
                 <div class="card-body" style="text-align:center; color: var(--gray-500); padding: 40px;">
                     {% if user.is_superuser %}
-                    暂无笔记，<a href="/admin/core/note/add/" style="color: var(--primary-blue);">分享第一篇笔记</a>
+                    暂无笔记，<a href="{% url 'core:note_create' %}" style="color: var(--primary-blue);">分享第一篇笔记</a>
                     {% else %}
                     暂无笔记
                     {% endif %}
