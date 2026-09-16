@@ -21,7 +21,7 @@
 
         <div class="grid-3">
             {% for note in notes %}
-            <div class="card">
+            <div class="card" style="cursor:pointer;" onclick="window.location='{% url 'core:note_detail' note.pk %}'">
                 <div class="card-body">
                     <div class="card-title">{{ note.title }}</div>
                     <div class="card-text">{{ note.intro|default:"暂无导读" }}</div>
@@ -31,9 +31,9 @@
                     <span>{{ note.published_at|date:"Y-m-d" }}</span>
                 </div>
                 <div style="padding: 0 20px 16px; display: flex; gap: 8px;">
-                    <a href="{% url 'core:note_detail' note.pk %}" class="btn btn-outline btn-sm" style="flex:1; justify-content:center;">阅读全文</a>
+                    <a href="{% url 'core:note_detail' note.pk %}" class="btn btn-outline btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">阅读全文</a>
                     {% if user.is_superuser %}
-                    <a href="{% url 'core:note_edit' note.pk %}" class="btn btn-ghost btn-sm" style="flex:1; justify-content:center;">编辑</a>
+                    <a href="{% url 'core:note_edit' note.pk %}" class="btn btn-ghost btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">编辑</a>
                     {% endif %}
                 </div>
             </div>

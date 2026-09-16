@@ -14,7 +14,7 @@
 
         <div class="grid-3">
             {% for script in scripts %}
-            <div class="card">
+            <div class="card" style="cursor:pointer;" onclick="window.location='{% url 'core:script_detail' script.pk %}'">
                 <div class="card-body">
                     <div class="card-title">{{ script.name }}</div>
                     <div class="card-text">适用场景：{{ script.scene }}</div>
@@ -24,10 +24,10 @@
                     <span>{{ script.updated_at|date:"Y-m-d" }}</span>
                 </div>
                 <div style="display:flex; gap:8px; padding: 0 20px 16px;">
-                    <a href="{% url 'core:script_detail' script.pk %}" class="btn btn-outline btn-sm" style="flex:1; justify-content:center;">查看详情</a>
+                    <a href="{% url 'core:script_detail' script.pk %}" class="btn btn-outline btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">查看详情</a>
                     {% if user.is_superuser %}
-                    <a href="{% url 'core:script_edit' script.pk %}" class="btn btn-ghost btn-sm" style="flex:1; justify-content:center;">编辑</a>
-                    <a href="{% url 'core:script_download' script.pk %}" class="btn btn-primary btn-sm" style="flex:1; justify-content:center;">立即下载</a>
+                    <a href="{% url 'core:script_edit' script.pk %}" class="btn btn-ghost btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">编辑</a>
+                    <a href="{% url 'core:script_download' script.pk %}" class="btn btn-primary btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">立即下载</a>
                     {% endif %}
                 </div>
             </div>
