@@ -1249,9 +1249,9 @@ img {
 }
 
 .editor-btn:hover {
-    background: linear-gradient(135deg, #58a6ff, #ff6b9a);
-    color: #ffffff;
-    border-color: transparent;
+   background: #e8f3ff;
+    color: #1677ff;
+    border-color: #1677ff;
 }
 
 /* 危险操作按钮文字 */
@@ -1439,6 +1439,28 @@ img {
 .note-content a {
     color: var(--primary-blue-dark);
     text-decoration: underline;
+}
+
+/* 编辑器下拉选择框，和editor-btn保持一致 */
+.editor-select {
+    padding: 6px 8px;
+    border: 1px solid rgba(125, 140, 180, 0.35);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--gray-700);
+    font-size: 13px;
+    cursor: pointer;
+    transition: var(--transition);
+    outline: none;
+}
+.editor-select:hover {
+    background: #e8f3ff;
+    color: #1677ff;
+    border-color: #1677ff;
+}
+.editor-select option {
+    color: var(--gray-900);
+    background: #fff;
 }
 
 @media (max-width: 768px) {
