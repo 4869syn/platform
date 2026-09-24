@@ -62,6 +62,7 @@ class Note(models.Model):
     content = models.TextField('内容')
     intro = models.TextField('简短导读', blank=True)
     author = models.CharField('作者', max_length=50, default='管理员')
+    file = models.FileField('文档文件', upload_to='note/', blank=True)
     published_at = models.DateTimeField('发布时间', auto_now_add=True)
 
     class Meta:

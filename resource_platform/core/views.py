@@ -8,6 +8,8 @@ from functools import wraps
 from .models import Banner, KnowledgeDoc, Script, Note, Tool, Announcement
 import os
 import io
+import re
+from datetime import datetime
 
 
 def superuser_required(view_func):
@@ -43,7 +45,6 @@ def _extract_docx_text(file_path):
                 tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
 
                 if tag == 'p':
-                    # Extract paragraph text
                     texts = []
                     for t in elem.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'):
                         if t.text:
@@ -52,7 +53,6 @@ def _extract_docx_text(file_path):
                     if not para_text:
                         continue
 
-                    # Check paragraph style for headings
                     pPr = elem.find('w:pPr', ns)
                     style_name = ''
                     if pPr is not None:
@@ -72,7 +72,6 @@ def _extract_docx_text(file_path):
                         html_parts.append('<p>' + escape(para_text) + '</p>')
 
                 elif tag == 'tbl':
-                    # Extract table
                     html_parts.append('<table style="width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;">')
                     for tr in elem.findall('w:tr', ns):
                         html_parts.append('<tr>')
@@ -108,6 +107,149 @@ def _extract_pdf_text(file_path):
     except Exception:
         pass
     return None
+
+
+def _html_to_docx(title, intro, content_html, author):
+    """将笔记 HTML 内容转换为 DOCX 文档，返回 BytesIO 对象"""
+    from docx import Document
+    from docx.shared import Pt, RGBColor
+    from html.parser import HTMLParser
+
+    doc = Document()
+
+    style = doc.styles['Normal']
+    style.font.name = 'Microsoft YaHei'
+    style.font.size = Pt(11)
+
+    doc.add_heading(title, level=0)
+
+    meta_para = doc.add_paragraph()
+    meta_run = meta_para.add_run(f'作者：{author}    发布时间：{datetime.now().strftime("%Y-%m-%d %H:%M")}')
+    meta_run.font.size = Pt(9)
+    meta_run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+    if intro:
+        intro_para = doc.add_paragraph()
+        intro_para.add_run(f'导读：{intro}')
+
+    doc.add_paragraph()
+
+    _parse_html_to_docx(doc, content_html)
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+def _parse_html_to_docx(doc, html):
+    """解析 HTML 字符串并写入 python-docx Document"""
+    from docx.shared import Pt
+    from html.parser import HTMLParser
+
+    class DocxHTMLParser(HTMLParser):
+        def __init__(self, doc):
+            super().__init__()
+            self.doc = doc
+            self.in_list = False
+            self.list_type = ''
+            self.list_items = []
+            self.current_item = ''
+            self.in_blockquote = False
+            self.blockquote_lines = []
+            self.heading_level = 0
+            self.heading_text = ''
+
+        def handle_starttag(self, tag, attrs):
+            if tag in ('h1', 'h2', 'h3', 'h4'):
+                self._flush_list()
+                self._flush_blockquote()
+                self.heading_level = int(tag[1])
+                self.heading_text = ''
+            elif tag == 'ul':
+                self._flush_list()
+                self._flush_blockquote()
+                self.in_list = True
+                self.list_type = 'ul'
+                self.list_items = []
+                self.current_item = ''
+            elif tag == 'ol':
+                self._flush_list()
+                self._flush_blockquote()
+                self.in_list = True
+                self.list_type = 'ol'
+                self.list_items = []
+                self.current_item = ''
+            elif tag == 'li':
+                self.current_item = ''
+            elif tag == 'blockquote':
+                self._flush_list()
+                self.in_blockquote = True
+                self.blockquote_lines = []
+            elif tag == 'br':
+                if self.in_list:
+                    self.current_item += ' '
+                elif self.in_blockquote:
+                    self.blockquote_lines.append('')
+
+        def handle_endtag(self, tag):
+            if tag in ('h1', 'h2', 'h3', 'h4'):
+                self._flush_list()
+                self._flush_blockquote()
+                text = self.heading_text.strip()
+                if text:
+                    self.doc.add_heading(text, level=min(self.heading_level, 4))
+                self.heading_level = 0
+            elif tag == 'ul' or tag == 'ol':
+                self._flush_list()
+            elif tag == 'li':
+                self.list_items.append(self.current_item.strip())
+                self.current_item = ''
+            elif tag == 'blockquote':
+                self._flush_blockquote()
+            elif tag == 'p':
+                self._flush_list()
+                self._flush_blockquote()
+
+        def handle_data(self, data):
+            if self.in_list:
+                self.current_item += data
+            elif self.in_blockquote:
+                self.blockquote_lines.append(data)
+            elif self.heading_level:
+                self.heading_text += data
+            else:
+                text = data.strip()
+                if text:
+                    self.doc.add_paragraph(text)
+
+        def _flush_pending_paragraph(self):
+            pass
+
+        def _flush_list(self):
+            if self.in_list and self.list_items:
+                for i, item in enumerate(self.list_items, 1):
+                    if self.list_type == 'ol':
+                        self.doc.add_paragraph(f'{i}. {item}')
+                    else:
+                        self.doc.add_paragraph(item, style='List Bullet')
+                self.in_list = False
+                self.list_items = []
+                self.list_type = ''
+
+        def _flush_blockquote(self):
+            if self.in_blockquote and self.blockquote_lines:
+                bq_text = ' '.join(line.strip() for line in self.blockquote_lines if line.strip())
+                if bq_text:
+                    para = self.doc.add_paragraph(bq_text)
+                    para.paragraph_format.left_indent = Pt(24)
+            self.in_blockquote = False
+            self.blockquote_lines = []
+
+    parser = DocxHTMLParser(doc)
+    parser.feed(html)
+    parser._flush_list()
+    parser._flush_blockquote()
 
 
 @login_required
@@ -329,7 +471,6 @@ def doc_edit(request, pk):
                     return render(request, 'doc_form.html', {
                         'doc': doc, 'active_page': 'knowledge', 'is_edit': True,
                     })
-                # 删除旧文件
                 if doc.file:
                     doc.file.delete(save=False)
                 doc.file = upload_file
@@ -436,6 +577,25 @@ def script_delete(request, pk):
 
 # ==================== 笔记分享：新建 / 在线编辑 ====================
 
+def _save_note_docx(note, title, intro, content_html, author):
+    """将笔记内容保存为 DOCX 文件到 media/note/ 目录"""
+    from django.core.files.base import ContentFile
+    from django.utils import timezone
+    import re
+
+    docx_buffer = _html_to_docx(title, intro, content_html, author)
+
+    # 使用标题_用户_日期时间到秒的命名方式
+    # 清理标题中的非法字符（Windows/Linux 文件系统不允许的字符）
+    safe_title = re.sub(r'[\\/:*?"<>|]', '_', title)
+    # 获取当前时间，格式：YYYYMMDD_HHMMSS
+    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"{safe_title}_{author}_{timestamp}.docx"
+
+    content_file = ContentFile(docx_buffer.read())
+    note.file.save(filename, content_file, save=False)
+
+
 @superuser_required
 def note_create(request):
     """在线新建笔记"""
@@ -455,6 +615,9 @@ def note_create(request):
                 content=content,
                 author=request.user.username,
             )
+            # 新增保存为 DOCX 文档
+            _save_note_docx(note, title, intro, content, request.user.username)
+            note.save()
             messages.success(request, '笔记发布成功！')
             return redirect('core:note_detail', pk=note.pk)
 
@@ -478,10 +641,16 @@ def note_edit(request, pk):
         if not title or not content:
             messages.error(request, '笔记标题和内容不能为空。')
         else:
+            # 先删除旧文件
+            if note.file:
+                note.file.delete(save=False)
+            
             note.title = title
             note.tag = tag if tag in dict(Note.TAG_CHOICES) else note.tag
             note.intro = intro
             note.content = content
+            # 生成新的 DOCX 文件（使用标题_用户_日期时间的命名方式）
+            _save_note_docx(note, title, intro, content, note.author)
             note.save()
             messages.success(request, '笔记已更新！')
             return redirect('core:note_detail', pk=note.pk)
@@ -493,11 +662,24 @@ def note_edit(request, pk):
     })
 
 
+
+@superuser_required
+def note_download(request, pk):
+    """下载笔记文档"""
+    note = get_object_or_404(Note, pk=pk)
+    if note.file:
+        return FileResponse(note.file.open('rb'), as_attachment=True, filename=os.path.basename(note.file.name))
+    raise Http404
+
+
 @superuser_required
 def note_delete(request, pk):
     """删除笔记"""
     note = get_object_or_404(Note, pk=pk)
     if request.method == 'POST':
+        # 删除本地文件（note.file.delete 会同时删除物理文件）
+        if note.file:
+            note.file.delete(save=False)
         note.delete()
         messages.success(request, '笔记已删除。')
     return redirect('core:notes')
