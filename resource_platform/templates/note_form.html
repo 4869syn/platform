@@ -1,21 +1,17 @@
 {% extends 'base.html' %}
-
 {% block title %}{% if is_edit %}编辑笔记{% else %}分享笔记{% endif %} - 笔记分享 - 资源聚合平台{% endblock %}
-
 {% block content %}
 <div class="container">
     <div class="detail-page form-page">
         <a href="{% if is_edit %}{% url 'core:note_detail' note.pk %}{% else %}{% url 'core:notes' %}{% endif %}" class="btn btn-ghost btn-sm back-link">
             &larr; {% if is_edit %}返回笔记详情{% else %}返回笔记分享{% endif %}
         </a>
-
         <h1 class="form-title">
             {% if is_edit %}编辑笔记{% else %}分享笔记{% endif %}
         </h1>
         <p class="form-subtitle">
             {% if is_edit %}修改笔记内容后保存，更新将立即生效{% else %}在线编写并分享你的技术、办公或生活笔记{% endif %}
         </p>
-
         {% if messages %}
         <div class="message-list">
             {% for message in messages %}
@@ -23,10 +19,8 @@
             {% endfor %}
         </div>
         {% endif %}
-
         <form method="post" class="resource-form" id="noteForm">
             {% csrf_token %}
-
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label" for="id_title">笔记标题 <span class="required">*</span></label>
@@ -45,14 +39,12 @@
                     </select>
                 </div>
             </div>
-
             <div class="form-group">
                 <label class="form-label" for="id_intro">简短导读</label>
                 <input type="text" id="id_intro" name="intro" class="form-input"
                        value="{% if is_edit %}{{ note.intro }}{% endif %}"
                        placeholder="一句话概括笔记内容，将显示在列表卡片中（可选）">
             </div>
-
             <div class="form-group">
                 <label class="form-label">笔记内容 <span class="required">*</span></label>
                 <div class="editor-toolbar" id="editorToolbar">
@@ -61,6 +53,26 @@
                     <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="h3" title="标题3">H3</button>
                     <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="p" title="正文">正文</button>
                     <span class="editor-divider"></span>
+                    <!-- 新增字体下拉 -->
+                    <select class="editor-select" id="fontFamilySelect" title="字体">
+                        <option value="">字体</option>
+                        <option value="Microsoft YaHei">微软雅黑</option>
+                        <option value="SimSun">宋体</option>
+                        <option value="SimHei">黑体</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                    </select>
+                    <!-- 新增字号下拉 -->
+                    <select class="editor-select" id="fontSizeSelect" title="字号">
+                        <option value="">字号</option>
+                        <option value="1">12px</option>
+                        <option value="2">14px</option>
+                        <option value="3">16px</option>
+                        <option value="4">18px</option>
+                        <option value="5">20px</option>
+                        <option value="6">24px</option>
+                    </select>
+                    <span class="editor-divider"></span>
                     <button type="button" class="editor-btn" data-cmd="bold" title="加粗"><strong>B</strong></button>
                     <button type="button" class="editor-btn" data-cmd="italic" title="斜体"><em>I</em></button>
                     <button type="button" class="editor-btn" data-cmd="underline" title="下划线"><u>U</u></button>
@@ -68,17 +80,16 @@
                     <span class="editor-divider"></span>
                     <button type="button" class="editor-btn" data-cmd="insertUnorderedList" title="无序列表">&bull; 列表</button>
                     <button type="button" class="editor-btn" data-cmd="insertOrderedList" title="有序列表">1. 列表</button>
-                    <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="blockquote" title="引用">&ldquo; 引用</button>
-                    <button type="button" class="editor-btn" data-cmd="insertHorizontalRule" title="分隔线">&mdash; 分隔线</button>
+                    <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="blockquote" title="引用（选中引用内文字可取消引用）">&ldquo; 引用</button>
+                    <button type="button" class="editor-btn" data-cmd="insertHorizontalRule" title="分隔线（选中分隔线再点可删除）">&mdash; 分隔线</button>
                     <span class="editor-divider"></span>
                     <button type="button" class="editor-btn" data-cmd="removeFormat" title="清除格式">✕ 清除格式</button>
                 </div>
                 <div id="id_content" class="rich-editor" contenteditable="true"
-                     data-placeholder="在此编写笔记正文，可使用上方工具栏设置标题、加粗等格式...">{% if is_edit %}{{ note.content|safe }}{% endif %}</div>
+                     data-placeholder="在此编写笔记正文，可使用上方工具栏设置标题、字体、字号、加粗等格式...">{% if is_edit %}{{ note.content|safe }}{% endif %}</div>
                 <input type="hidden" name="content" id="id_content_input" required>
                 <div class="form-hint">内容将按编辑时的格式原样展示在笔记详情页</div>
             </div>
-
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-lg">
                     {% if is_edit %}保存修改{% else %}发布笔记{% endif %}
@@ -89,7 +100,6 @@
     </div>
 </div>
 {% endblock %}
-
 {% block extra_js %}
 <script>
     (function () {
@@ -97,9 +107,25 @@
         var toolbar = document.getElementById('editorToolbar');
         var form = document.getElementById('noteForm');
         var contentInput = document.getElementById('id_content_input');
+        var fontFamilySelect = document.getElementById('fontFamilySelect');
+        var fontSizeSelect = document.getElementById('fontSizeSelect');
         if (!editor || !toolbar || !form || !contentInput) return;
 
-        // 工具栏命令
+        // 判断选区是否在某个标签内
+        function selectionInTag(tagName) {
+            var sel = window.getSelection();
+            if (!sel.rangeCount) return false;
+            var node = sel.anchorNode;
+            while (node && node !== editor) {
+                if (node.tagName && node.tagName.toLowerCase() === tagName.toLowerCase()) {
+                    return true;
+                }
+                node = node.parentNode;
+            }
+            return false;
+        }
+
+        // 工具栏按钮命令
         toolbar.addEventListener('click', function (e) {
             var btn = e.target.closest('.editor-btn');
             if (!btn) return;
@@ -107,9 +133,61 @@
             var cmd = btn.getAttribute('data-cmd');
             var value = btn.getAttribute('data-value') || null;
             editor.focus();
+
+            // ========== 引用切换逻辑 ==========
+            if (cmd === 'formatBlock' && value === 'blockquote') {
+                if (selectionInTag('blockquote')) {
+                    // 已经在引用里，退出引用，变回p标签
+                    document.execCommand('formatBlock', false, 'p');
+                } else {
+                    document.execCommand('formatBlock', false, 'blockquote');
+                }
+                syncContent();
+                return;
+            }
+
+            // ========== 分隔线：选中hr时删除 ==========
+            if (cmd === 'insertHorizontalRule') {
+                var sel = window.getSelection();
+                if (sel.rangeCount) {
+                    var range = sel.getRangeAt(0);
+                    var node = range.startContainer;
+                    if (node.tagName === 'HR' || (node.nextSibling && node.nextSibling.tagName === 'HR')) {
+                        // 选中分隔线直接删掉
+                        var hrNode;
+                        if(node.tagName === 'HR') hrNode = node;
+                        else hrNode = node.nextSibling;
+                        if(hrNode && hrNode.tagName === 'HR'){
+                            hrNode.remove();
+                            syncContent();
+                            return;
+                        }
+                    }
+                }
+                document.execCommand(cmd, false, value);
+                syncContent();
+                return;
+            }
+
+            // 其他原有命令
             document.execCommand(cmd, false, value);
             syncContent();
         });
+
+        // 字体切换
+        fontFamilySelect.addEventListener('change', function(){
+            editor.focus();
+            document.execCommand('fontName', false, this.value);
+            syncContent();
+            this.value = ""; // 选择后重置下拉，方便重复选择
+        })
+        // 字号切换
+        fontSizeSelect.addEventListener('change', function(){
+            editor.focus();
+            document.execCommand('fontSize', false, this.value);
+            syncContent();
+            this.value = "";
+        })
 
         // 提交前同步内容到隐藏 input
         function syncContent() {
@@ -122,10 +200,8 @@
             }
             contentInput.value = html;
         }
-
         editor.addEventListener('input', syncContent);
         editor.addEventListener('blur', syncContent);
-
         form.addEventListener('submit', function (e) {
             syncContent();
             if (!contentInput.value) {
@@ -135,7 +211,6 @@
                 alert('笔记内容不能为空。');
             }
         });
-
         // 占位符显示控制
         function updatePlaceholder() {
             if (editor.textContent.trim() || editor.querySelector('img')) {
