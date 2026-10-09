@@ -1,0 +1,323 @@
+/* ===== 文档预览样式 ===== */
+.doc-preview-container {
+    margin-top: 24px;
+}
+
+.doc-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--gray-50, #f8f9fa);
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 8px 8px 0 0;
+}
+
+.doc-preview-header h2 {
+    font-size: 16px;
+    margin: 0;
+    color: var(--gray-800, #333);
+}
+
+.doc-preview-body {
+    padding: 24px;
+    background: #fff;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Word 文档预览样式 */
+.doc-preview {
+    line-height: 1.8;
+    color: var(--gray-800, #333);
+    font-size: 14px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.doc-preview h1 {
+    font-size: 24px;
+    margin: 24px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary-color, #5B9BD5);
+    color: var(--gray-900, #222);
+}
+
+.doc-preview h2 {
+    font-size: 20px;
+    margin: 20px 0 12px;
+    color: var(--gray-900, #222);
+}
+
+.doc-preview h3 {
+    font-size: 17px;
+    margin: 16px 0 10px;
+    color: var(--gray-800, #333);
+}
+
+.doc-preview h4 {
+    font-size: 15px;
+    margin: 14px 0 8px;
+    color: var(--gray-800, #333);
+}
+
+.doc-preview p {
+    margin: 8px 0;
+}
+
+.doc-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin: 12px 0;
+}
+
+.doc-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+}
+
+.doc-preview table th,
+.doc-preview table td {
+    border: 1px solid #e0e0e0;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.doc-preview table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.doc-preview ul,
+.doc-preview ol {
+    margin: 8px 0 8px 24px;
+    padding: 0;
+}
+
+.doc-preview li {
+    margin: 4px 0;
+}
+
+.doc-preview blockquote {
+    margin: 12px 0;
+    padding: 8px 16px;
+    border-left: 4px solid var(--primary-color, #5B9BD5);
+    background: #f8f9fa;
+    color: var(--gray-600, #666);
+    border-radius: 0 4px 4px 0;
+}
+
+.doc-preview a {
+    color: var(--primary-color, #5B9BD5);
+    text-decoration: underline;
+}
+
+/* PDF 预览样式（滚动翻页模式） */
+.pdf-preview-wrapper {
+    background: #f0f0f0;
+    border-radius: 4px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.pdf-page-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+.pdf-page-wrapper:last-child {
+    margin-bottom: 0;
+}
+
+.pdf-page-canvas {
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    border-radius: 2px;
+    max-width: 100%;
+    height: auto;
+}
+
+.pdf-page-label {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--gray-500, #999);
+    text-align: center;
+}
+
+.pdf-preview-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--gray-50, #f8f9fa);
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 8px 8px 0 0;
+    flex-wrap: wrap;
+}
+
+.pdf-preview-toolbar button {
+    background: var(--primary-color, #5B9BD5);
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: opacity 0.2s;
+}
+
+.pdf-preview-toolbar button:hover {
+    opacity: 0.85;
+}
+
+.pdf-preview-toolbar button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pdf-preview-toolbar .page-info {
+    font-size: 13px;
+    color: var(--gray-600, #666);
+    margin: 0 8px;
+}
+
+.pdf-preview-toolbar .page-jump-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pdf-preview-toolbar .page-jump-control input {
+    width: 60px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--gray-700, #555);
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.pdf-preview-toolbar .page-jump-control input:focus {
+    border-color: var(--primary-color, #5B9BD5);
+}
+
+.pdf-preview-toolbar .page-jump-control input::-webkit-outer-spin-button,
+.pdf-preview-toolbar .page-jump-control input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.pdf-preview-toolbar .page-jump-control input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.pdf-preview-toolbar .page-jump-control button {
+    padding: 4px 12px;
+    font-size: 13px;
+    background: var(--gray-100, #f0f0f0);
+    color: var(--gray-700, #555);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.pdf-preview-toolbar .page-jump-control button:hover {
+    background: var(--primary-color, #5B9BD5);
+    border-color: var(--primary-color, #5B9BD5);
+    color: #fff;
+}
+
+.pdf-preview-toolbar .zoom-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pdf-preview-toolbar .zoom-control span {
+    font-size: 13px;
+    color: var(--gray-600, #666);
+    min-width: 48px;
+    text-align: center;
+}
+
+.pdf-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--gray-500, #999);
+    font-size: 15px;
+}
+
+.pdf-loading .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e0e0e0;
+    border-top-color: var(--primary-color, #5B9BD5);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 12px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.pdf-error {
+    text-align: center;
+    padding: 60px 20px;
+    color: #d32f2f;
+    font-size: 15px;
+}
+
+.doc-preview-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray-500, #999);
+}
+
+/* 预览切换 tabs */
+.preview-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.preview-tab {
+    padding: 8px 20px;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    background: #fff;
+    color: var(--gray-600, #666);
+    transition: all 0.2s;
+}
+
+.preview-tab:hover {
+    border-color: var(--primary-color, #5B9BD5);
+    color: var(--primary-color, #5B9BD5);
+}
+
+.preview-tab.active {
+    background: var(--primary-color, #5B9BD5);
+    border-color: var(--primary-color, #5B9BD5);
+    color: #fff;
+}
