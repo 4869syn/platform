@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
+{% load static %} 
 
 {% block title %}{{ doc.title }} - 知识文库 - 资源聚合平台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/doc_preview.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -28,7 +33,7 @@
                 <div style="display: flex; gap: 12px;">
                     {% if user.is_superuser %}
                         <a href="{% url 'core:doc_download' doc.pk %}" class="btn btn-primary">下载文档</a>
-                        <a href="{% url 'core:doc_edit' doc.pk %}" class="btn btn-outline"> 在线编辑</a>
+                        <a href="{% url 'core:doc_edit' doc.pk %}" class="btn btn-outline">在线编辑</a>
                         <button type="button" class="btn btn-ghost btn-danger-text" onclick="confirmDelete('{% url 'core:doc_delete' doc.pk %}', '确定要删除文档「{{ doc.title }}」吗？此操作不可恢复。')">删除</button>
                     {% else %}
                         <span class="btn btn-ghost" style="opacity: 0.6; cursor: not-allowed;">下载文档（需管理员权限）</span>
@@ -37,24 +42,69 @@
             </div>
         </div>
 
-        {% if preview_html %}
+        {% if doc.file %}
             <div class="card">
                 <div class="card-body">
-                    <h2 style="font-size: 18px; margin-bottom: 16px;">文档内容预览</h2>
-                    <div class="doc-preview" style="line-height: 1.8; color: var(--gray-800);">
-                        {{ preview_html|safe }}
-                    </div>
-                </div>
-            </div>
-        {% elif doc.file %}
-            <div class="card">
-                <div class="card-body" style="text-align: center; padding: 60px 20px;">
-                    <p style="color: var(--gray-500); margin-bottom: 16px;">该文档暂不支持在线预览</p>
-                    {% if user.is_superuser %}
-                        <p style="color: var(--gray-400); font-size: 14px; margin-bottom: 24px;">请点击上方"下载文档"按钮下载后查看</p>
-                        <a href="{% url 'core:doc_download' doc.pk %}" class="btn btn-primary">下载文档</a>
+                    {% if doc.doc_type == 'pdf' %}
+                        <!-- PDF 预览：使用 pdf.js 渲染，滚动翻页 -->
+                        <div class="pdf-preview-toolbar">
+                            <span class="page-info" id="pdfPageInfo">加载中...</span>
+                            <div class="page-jump-control">
+                                <input type="number" id="pdfPageJumpInput" min="1" placeholder="页码" onkeydown="if(event.key==='Enter'){pdfJumpToPage();}" />
+                                <button onclick="pdfJumpToPage()">跳转</button>
+                            </div>
+                            <div style="flex: 1;"></div>
+                            <div class="zoom-control">
+                                <button onclick="pdfZoomOut()">−</button>
+                                <span id="pdfZoomInfo">100%</span>
+                                <button onclick="pdfZoomIn()">+</button>
+                            </div>
+                            <button onclick="pdfFitWidth()">适应宽度</button>
+                        </div>
+                        <div class="pdf-preview-wrapper" id="pdfPreviewContainer" data-pdf-url="{% url 'core:doc_preview' doc.pk %}">
+                            <div class="pdf-loading" id="pdfLoading">
+                                <div class="spinner"></div>
+                                <span>正在加载 PDF 文档...</span>
+                            </div>
+                            <div class="pdf-error" id="pdfError" style="display:none;">
+                                <p>无法加载 PDF 文档，请下载后查看。</p>
+                                {% if user.is_superuser %}
+                                    <p style="margin-top: 12px;">
+                                        <a href="{% url 'core:doc_download' doc.pk %}" class="btn btn-primary">下载文档</a>
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% elif doc.doc_type == 'docx' %}
+                        <!-- Word 文档预览 -->
+                        <div class="doc-preview-header">
+                            <h2>文档内容预览</h2>
+                        </div>
+                        <div class="doc-preview-body">
+                            {% if preview_html %}
+                                <div class="doc-preview">
+                                    {{ preview_html|safe }}
+                                </div>
+                            {% else %}
+                                <div class="doc-preview-empty">
+                                    <p style="color: var(--gray-500); margin-bottom: 16px;">该文档暂不支持在线预览</p>
+                                    {% if user.is_superuser %}
+                                        <a href="{% url 'core:doc_download' doc.pk %}" class="btn btn-primary">下载文档</a>
+                                    {% else %}
+                                        <p style="color: var(--gray-400); font-size: 14px;">下载功能需要管理员权限</p>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
                     {% else %}
-                        <p style="color: var(--gray-400); font-size: 14px;">下载功能需要管理员权限</p>
+                        <div class="doc-preview-empty">
+                            <p style="color: var(--gray-500); margin-bottom: 16px;">该文档类型暂不支持在线预览</p>
+                            {% if user.is_superuser %}
+                                <a href="{% url 'core:doc_download' doc.pk %}" class="btn btn-primary">下载文档</a>
+                            {% else %}
+                                <p style="color: var(--gray-400); font-size: 14px;">下载功能需要管理员权限</p>
+                            {% endif %}
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -80,4 +130,219 @@
         }
     }
 </script>
+
+{% if doc.doc_type == 'pdf' %}
+<script>
+    // ===== PDF.js 预览（滚动翻页模式）=====
+    var pdfDoc = null;
+    var pdfScale = 1.0;
+    var pdfTotalPages = 0;
+    var pdfCurrentPage = 1;
+    var pdfPreviewContainer = document.getElementById('pdfPreviewContainer');
+    var pdfLoading = document.getElementById('pdfLoading');
+    var pdfError = document.getElementById('pdfError');
+    var pdfPageObserver = null;
+    var pdfIsJumping = false;
+
+    // 加载 pdf.js 库
+    function loadPdfJs() {
+        return new Promise(function(resolve, reject) {
+            if (window.pdfjsLib) {
+                resolve();
+                return;
+            }
+            var script = document.createElement('script');
+            script.src = '/static/vendor/pdfjs/build/pdf.min.js';
+            script.onload = function() {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/build/pdf.worker.min.js';
+                resolve();
+            };
+            script.onerror = function() {
+                reject(new Error('Failed to load pdf.js'));
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    // 渲染单个页面到容器
+    function renderPdfPage(pageNum) {
+        if (!pdfDoc) return Promise.resolve();
+
+        return pdfDoc.getPage(pageNum).then(function(page) {
+            var viewport = page.getViewport({ scale: pdfScale });
+            var canvas = document.createElement('canvas');
+            canvas.className = 'pdf-page-canvas';
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            // 创建页面包装器
+            var pageWrapper = document.createElement('div');
+            pageWrapper.className = 'pdf-page-wrapper';
+            pageWrapper.id = 'pdfPage_' + pageNum;
+            pageWrapper.appendChild(canvas);
+
+            // 添加页码标签
+            var pageLabel = document.createElement('div');
+            pageLabel.className = 'pdf-page-label';
+            pageLabel.textContent = '第 ' + pageNum + ' / ' + pdfTotalPages + ' 页';
+            pageWrapper.appendChild(pageLabel);
+
+            pdfPreviewContainer.appendChild(pageWrapper);
+
+            var ctx = canvas.getContext('2d');
+            var renderContext = {
+                canvasContext: ctx,
+                viewport: viewport
+            };
+
+            return page.render(renderContext).promise;
+        });
+    }
+
+    // 更新左上角页码显示
+    function updatePdfPageInfo() {
+        document.getElementById('pdfPageInfo').textContent = '第 ' + pdfCurrentPage + ' / ' + pdfTotalPages + ' 页';
+    }
+
+    // 初始化 IntersectionObserver 监听页面可见性
+    function initPdfPageObserver() {
+        if (pdfPageObserver) {
+            pdfPageObserver.disconnect();
+        }
+
+        pdfPageObserver = new IntersectionObserver(function(entries) {
+            if (pdfIsJumping) return;
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    var pageNum = parseInt(entry.target.id.replace('pdfPage_', ''), 10);
+                    if (!isNaN(pageNum) && pageNum !== pdfCurrentPage) {
+                        pdfCurrentPage = pageNum;
+                        updatePdfPageInfo();
+                    }
+                }
+            });
+        }, {
+            root: pdfPreviewContainer,
+            threshold: 0.3
+        });
+
+        // 观察所有页面
+        var pageWrappers = pdfPreviewContainer.querySelectorAll('.pdf-page-wrapper');
+        pageWrappers.forEach(function(wrapper) {
+            pdfPageObserver.observe(wrapper);
+        });
+    }
+
+    // 跳转到指定页面
+    function pdfJumpToPage() {
+        var input = document.getElementById('pdfPageJumpInput');
+        var pageNum = parseInt(input.value, 10);
+
+        if (isNaN(pageNum)) {
+            alert('请输入有效的页码');
+            return;
+        }
+
+        if (pageNum < 1 || pageNum > pdfTotalPages) {
+            alert('页码必须在 1 到 ' + pdfTotalPages + ' 之间');
+            return;
+        }
+
+        var targetElement = document.getElementById('pdfPage_' + pageNum);
+        if (!targetElement) {
+            alert('页面尚未渲染完成，请稍后再试');
+            return;
+        }
+
+        pdfIsJumping = true;
+        pdfCurrentPage = pageNum;
+        updatePdfPageInfo();
+
+        targetElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+
+        // 滚动结束后清除跳转标记
+        setTimeout(function() {
+            pdfIsJumping = false;
+        }, 800);
+    }
+
+    // 渲染所有页面（滚动翻页）
+    function renderAllPdfPages() {
+        if (!pdfDoc) return;
+
+        // 清空容器中已有的页面（保留 loading 和 error 元素）
+        var pageWrappers = pdfPreviewContainer.querySelectorAll('.pdf-page-wrapper');
+        pageWrappers.forEach(function(wrapper) {
+            wrapper.remove();
+        });
+
+        // 逐页渲染
+        var pageNum = 1;
+        var promise = Promise.resolve();
+        while (pageNum <= pdfTotalPages) {
+            (function(currentPage) {
+                promise = promise.then(function() {
+                    return renderPdfPage(currentPage);
+                });
+            })(pageNum);
+            pageNum++;
+        }
+
+        promise.then(function() {
+            updatePdfPageInfo();
+            initPdfPageObserver();
+        });
+    }
+
+    function pdfZoomIn() {
+        pdfScale = Math.min(pdfScale + 0.2, 3.0);
+        updateZoomInfo();
+        renderAllPdfPages();
+    }
+
+    function pdfZoomOut() {
+        pdfScale = Math.max(pdfScale - 0.2, 0.5);
+        updateZoomInfo();
+        renderAllPdfPages();
+    }
+
+    function pdfFitWidth() {
+        if (!pdfDoc) return;
+        pdfDoc.getPage(1).then(function(page) {
+            var baseViewport = page.getViewport({ scale: 1.0 });
+            var containerWidth = pdfPreviewContainer.clientWidth - 40;
+            pdfScale = containerWidth / baseViewport.width;
+            pdfScale = Math.max(0.5, Math.min(pdfScale, 3.0));
+            updateZoomInfo();
+            renderAllPdfPages();
+        });
+    }
+
+    function updateZoomInfo() {
+        document.getElementById('pdfZoomInfo').textContent = Math.round(pdfScale * 100) + '%';
+    }
+
+    // 初始化 PDF 预览
+    loadPdfJs().then(function() {
+        var pdfUrl = pdfPreviewContainer.getAttribute('data-pdf-url');
+        pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+            pdfDoc = pdf;
+            pdfTotalPages = pdf.numPages;
+            pdfLoading.style.display = 'none';
+            pdfFitWidth();
+        }).catch(function(err) {
+            console.error('PDF load error:', err);
+            pdfLoading.style.display = 'none';
+            pdfError.style.display = 'block';
+        });
+    }).catch(function(err) {
+        console.error('pdf.js load error:', err);
+        pdfLoading.style.display = 'none';
+        pdfError.style.display = 'block';
+    });
+</script>
+{% endif %}
 {% endblock %}
