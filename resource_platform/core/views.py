@@ -24,71 +24,83 @@ def superuser_required(view_func):
 
 
 def _extract_docx_text(file_path):
-    """Extract text from DOCX using built-in zipfile + xml (no external deps)."""
-    import zipfile
-    import xml.etree.ElementTree as ET
-
-    ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
-    html_parts = []
-
+    """Extract text from DOCX using mammoth for full formatting support."""
     try:
-        with zipfile.ZipFile(file_path, 'r') as z:
-            with z.open('word/document.xml') as f:
-                tree = ET.parse(f)
-                root = tree.getroot()
+        import mammoth
+        with open(file_path, 'rb') as f:
+            result = mammoth.convert_to_html(f)
+            html = result.value
+            if not html.strip():
+                return '<p style="color:#999;">文档内容为空或无法解析，请下载后查看。</p>'
+            return html
+    except ImportError:
+        # Fallback to built-in zipfile + xml method
+        import zipfile
+        import xml.etree.ElementTree as ET
 
-            body = root.find('w:body', ns)
-            if body is None:
-                return '<p style="color:#999;">无法解析文档结构。</p>'
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        html_parts = []
 
-            for elem in body:
-                tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+        try:
+            with zipfile.ZipFile(file_path, 'r') as z:
+                with z.open('word/document.xml') as f:
+                    tree = ET.parse(f)
+                    root = tree.getroot()
 
-                if tag == 'p':
-                    texts = []
-                    for t in elem.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'):
-                        if t.text:
-                            texts.append(t.text)
-                    para_text = ''.join(texts).strip()
-                    if not para_text:
-                        continue
+                body = root.find('w:body', ns)
+                if body is None:
+                    return '<p style="color:#999;">无法解析文档结构。</p>'
 
-                    pPr = elem.find('w:pPr', ns)
-                    style_name = ''
-                    if pPr is not None:
-                        pStyle = pPr.find('w:pStyle', ns)
-                        if pStyle is not None:
-                            style_name = pStyle.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', '')
+                for elem in body:
+                    tag = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
 
-                    if 'Heading1' in style_name or style_name == '1':
-                        html_parts.append('<h1>' + escape(para_text) + '</h1>')
-                    elif 'Heading2' in style_name or style_name == '2':
-                        html_parts.append('<h2>' + escape(para_text) + '</h2>')
-                    elif 'Heading3' in style_name or style_name == '3':
-                        html_parts.append('<h3>' + escape(para_text) + '</h3>')
-                    elif 'Heading4' in style_name or style_name == '4':
-                        html_parts.append('<h4>' + escape(para_text) + '</h4>')
-                    else:
-                        html_parts.append('<p>' + escape(para_text) + '</p>')
+                    if tag == 'p':
+                        texts = []
+                        for t in elem.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'):
+                            if t.text:
+                                texts.append(t.text)
+                        para_text = ''.join(texts).strip()
+                        if not para_text:
+                            continue
 
-                elif tag == 'tbl':
-                    html_parts.append('<table style="width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;">')
-                    for tr in elem.findall('w:tr', ns):
-                        html_parts.append('<tr>')
-                        for tc in tr.findall('w:tc', ns):
-                            cell_texts = []
-                            for t in tc.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'):
-                                if t.text:
-                                    cell_texts.append(t.text)
-                            cell_text = ''.join(cell_texts).strip()
-                            html_parts.append('<td style="border:1px solid #e0e0e0; padding:8px 12px;">' + escape(cell_text) + '</td>')
-                        html_parts.append('</tr>')
-                    html_parts.append('</table>')
+                        pPr = elem.find('w:pPr', ns)
+                        style_name = ''
+                        if pPr is not None:
+                            pStyle = pPr.find('w:pStyle', ns)
+                            if pStyle is not None:
+                                style_name = pStyle.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', '')
 
-        if not html_parts:
-            return '<p style="color:#999;">文档内容为空或无法解析，请下载后查看。</p>'
-        return '\n'.join(html_parts)
+                        if 'Heading1' in style_name or style_name == '1':
+                            html_parts.append('<h1>' + escape(para_text) + '</h1>')
+                        elif 'Heading2' in style_name or style_name == '2':
+                            html_parts.append('<h2>' + escape(para_text) + '</h2>')
+                        elif 'Heading3' in style_name or style_name == '3':
+                            html_parts.append('<h3>' + escape(para_text) + '</h3>')
+                        elif 'Heading4' in style_name or style_name == '4':
+                            html_parts.append('<h4>' + escape(para_text) + '</h4>')
+                        else:
+                            html_parts.append('<p>' + escape(para_text) + '</p>')
 
+                    elif tag == 'tbl':
+                        html_parts.append('<table style="width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;">')
+                        for tr in elem.findall('w:tr', ns):
+                            html_parts.append('<tr>')
+                            for tc in tr.findall('w:tc', ns):
+                                cell_texts = []
+                                for t in tc.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'):
+                                    if t.text:
+                                        cell_texts.append(t.text)
+                                cell_text = ''.join(cell_texts).strip()
+                                html_parts.append('<td style="border:1px solid #e0e0e0; padding:8px 12px;">' + escape(cell_text) + '</td>')
+                            html_parts.append('</tr>')
+                        html_parts.append('</table>')
+
+            if not html_parts:
+                return '<p style="color:#999;">文档内容为空或无法解析，请下载后查看。</p>'
+            return '\n'.join(html_parts)
+
+        except Exception as e:
+            return '<p style="color:#999;">无法解析文档内容（' + escape(str(e)) + '），请下载后查看。</p>'
     except Exception as e:
         return '<p style="color:#999;">无法解析文档内容（' + escape(str(e)) + '），请下载后查看。</p>'
 
@@ -313,6 +325,7 @@ def doc_detail(request, pk):
         if doc.doc_type == 'docx':
             preview_html = _extract_docx_text(file_path)
         elif doc.doc_type == 'pdf':
+            # PDF 使用前端 pdf.js 渲染，preview_html 备用
             preview_html = _extract_pdf_text(file_path)
 
     context = {
@@ -321,6 +334,26 @@ def doc_detail(request, pk):
         'active_page': 'knowledge',
     }
     return render(request, 'doc_detail.html', context)
+
+
+@login_required
+def doc_preview(request, pk):
+    """提供文档文件流用于在线预览（PDF 使用 pdf.js 渲染）"""
+    doc = get_object_or_404(KnowledgeDoc, pk=pk)
+    if not doc.file:
+        raise Http404
+    try:
+        if doc.doc_type == 'pdf':
+            content_type = 'application/pdf'
+        elif doc.doc_type == 'docx':
+            content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        else:
+            content_type = 'application/octet-stream'
+        response = FileResponse(doc.file.open('rb'), content_type=content_type)
+        response['Content-Disposition'] = f'inline; filename="{os.path.basename(doc.file.name)}"'
+        return response
+    except Exception:
+        raise Http404
 
 
 @superuser_required

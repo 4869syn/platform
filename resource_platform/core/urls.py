@@ -11,6 +11,7 @@ urlpatterns = [
     path('knowledge/', views.knowledge_list, name='knowledge'),
     path('knowledge/upload/', views.doc_upload, name='doc_upload'),
     path('knowledge/<int:pk>/', views.doc_detail, name='doc_detail'),
+    path('knowledge/<int:pk>/preview/', views.doc_preview, name='doc_preview'),
     path('knowledge/<int:pk>/edit/', views.doc_edit, name='doc_edit'),
     path('knowledge/<int:pk>/delete/', views.doc_delete, name='doc_delete'),
     path('knowledge/<int:pk>/download/', views.doc_download, name='doc_download'),
@@ -28,4 +29,3 @@ urlpatterns = [
     path('notes/<int:pk>/delete/', views.note_delete, name='note_delete'),
     path('tools/', views.tool_list, name='tools'),
 ]
-
