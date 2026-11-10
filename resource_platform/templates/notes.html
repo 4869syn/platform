@@ -7,7 +7,9 @@
     <section class="section">
         <div class="section-header">
             <h2 class="section-title">笔记分享</h2>
+            {% if user.is_superuser %}
             <a href="{% url 'core:note_create' %}" class="btn btn-primary">＋ 分享笔记</a>
+            {% endif %}
         </div>
 
         <div class="category-nav">
@@ -28,19 +30,27 @@
                 </div>
                 <div class="card-footer">
                     <span class="tag">{{ note.get_tag_display }}</span>
+                    {% if note.is_shared %}
+                    <span class="tag tag-shared" title="已分享给游客用户">已分享</span>
+                    {% endif %}
                     <span>{{ note.published_at|date:"Y-m-d" }}</span>
                 </div>
                 <div style="padding: 0 20px 16px; display: flex; gap: 8px;">
                     <a href="{% url 'core:note_detail' note.pk %}" class="btn btn-outline btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">阅读全文</a>
                     {% if user.is_superuser %}
                     <a href="{% url 'core:note_edit' note.pk %}" class="btn btn-ghost btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">编辑</a>
+                    <a href="{% url 'core:note_share' note.pk %}" class="btn btn-ghost btn-sm" style="flex:1; justify-content:center;" onclick="event.stopPropagation();">{% if note.is_shared %}取消分享{% else %}分享{% endif %}</a>
                     {% endif %}
                 </div>
             </div>
             {% empty %}
             <div class="card" style="grid-column: 1 / -1;">
                 <div class="card-body" style="text-align:center; color: var(--gray-500); padding: 60px;">
+                    {% if user.is_superuser %}
                     暂无笔记，<a href="{% url 'core:note_create' %}" style="color: var(--primary-blue);">分享第一篇笔记</a>
+                    {% else %}
+                    暂无笔记
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
