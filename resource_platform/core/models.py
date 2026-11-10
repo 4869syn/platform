@@ -26,6 +26,7 @@ class KnowledgeDoc(models.Model):
     summary = models.TextField('简介摘要', blank=True)
     category = models.CharField('分类', max_length=50, blank=True)
     views = models.IntegerField('浏览量', default=0)
+    is_shared = models.BooleanField('是否分享', default=False, help_text='勾选后游客用户可预览')
     uploaded_at = models.DateTimeField('上传时间', auto_now_add=True)
 
     class Meta:
@@ -44,6 +45,7 @@ class Script(models.Model):
     file = models.FileField('脚本文件', upload_to='scripts/')
     tutorial = models.TextField('使用教程', blank=True)
     downloads = models.IntegerField('下载次数', default=0)
+    is_shared = models.BooleanField('是否分享', default=False, help_text='勾选后游客用户可预览')
     updated_at = models.DateTimeField('更新时间', auto_now=True)
 
     class Meta:
@@ -63,6 +65,7 @@ class Note(models.Model):
     intro = models.TextField('简短导读', blank=True)
     author = models.CharField('作者', max_length=50, default='管理员')
     file = models.FileField('文档文件', upload_to='note/', blank=True)
+    is_shared = models.BooleanField('是否分享', default=False, help_text='勾选后游客用户可预览')
     published_at = models.DateTimeField('发布时间', auto_now_add=True)
 
     class Meta:

@@ -11,21 +11,24 @@ class BannerAdmin(admin.ModelAdmin):
 
 @admin.register(KnowledgeDoc)
 class KnowledgeDocAdmin(admin.ModelAdmin):
-    list_display = ['title', 'doc_type', 'category', 'views', 'uploaded_at']
-    list_filter = ['doc_type', 'category']
+    list_display = ['title', 'doc_type', 'category', 'views', 'is_shared', 'uploaded_at']
+    list_editable = ['is_shared']
+    list_filter = ['doc_type', 'category', 'is_shared']
     search_fields = ['title', 'summary']
 
 
 @admin.register(Script)
 class ScriptAdmin(admin.ModelAdmin):
-    list_display = ['name', 'version', 'downloads', 'updated_at']
+    list_display = ['name', 'version', 'downloads', 'is_shared', 'updated_at']
+    list_editable = ['is_shared']
     search_fields = ['name', 'scene']
 
 
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
-    list_display = ['title', 'tag', 'author', 'published_at']
-    list_filter = ['tag']
+    list_display = ['title', 'tag', 'author', 'is_shared', 'published_at']
+    list_editable = ['is_shared']
+    list_filter = ['tag', 'is_shared']
     search_fields = ['title', 'content']
 
 

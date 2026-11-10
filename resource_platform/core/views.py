@@ -23,6 +23,35 @@ def superuser_required(view_func):
     return wrapper
 
 
+def get_user_level(user):
+    """
+    获取用户等级：
+    3 = 超级用户 (admin)：可管理、查看所有、可编辑/上传/下载
+    2 = 普通用户 (test_syn)：可查看所有材料，但无法编辑
+    1 = 游客用户 (aboutme)：仅可预览已分享(is_shared=True)的材料
+    0 = 未登录
+    """
+    if not user or not user.is_authenticated:
+        return 0
+    if user.is_superuser:
+        return 3
+    if user.groups.filter(name='normal').exists():
+        return 2
+    return 1
+
+
+def visible_qs_for_user(user, queryset):
+    """
+    根据用户等级过滤内容：
+    - 等级 >= 2（普通用户/超级用户）：可见全部
+    - 等级 == 1（游客）：仅可见已分享(is_shared=True)的内容
+    """
+    level = get_user_level(user)
+    if level >= 2:
+        return queryset
+    return queryset.filter(is_shared=True)
+
+
 def _extract_docx_text(file_path):
     """Extract text from DOCX using mammoth for full formatting support."""
     try:
@@ -268,9 +297,9 @@ def _parse_html_to_docx(doc, html):
 def index(request):
     banners = Banner.objects.filter(is_active=True)
     announcements = Announcement.objects.all()[:8]
-    latest_docs = KnowledgeDoc.objects.all()[:4]
-    latest_scripts = Script.objects.all()[:4]
-    latest_notes = Note.objects.all()[:4]
+    latest_docs = visible_qs_for_user(request.user, KnowledgeDoc.objects.all())[:4]
+    latest_scripts = visible_qs_for_user(request.user, Script.objects.all())[:4]
+    latest_notes = visible_qs_for_user(request.user, Note.objects.all())[:4]
     hot_tools = Tool.objects.filter(is_hot=True)[:6]
     new_tools = Tool.objects.filter(is_new=True)[:6]
 
@@ -282,6 +311,7 @@ def index(request):
         'latest_notes': latest_notes,
         'hot_tools': hot_tools,
         'new_tools': new_tools,
+        'user_level': get_user_level(request.user),
         'active_page': 'home',
     }
     return render(request, 'index.html', context)
@@ -291,7 +321,7 @@ def index(request):
 def knowledge_list(request):
     query = request.GET.get('q', '')
     category = request.GET.get('category', '')
-    docs = KnowledgeDoc.objects.all()
+    docs = visible_qs_for_user(request.user, KnowledgeDoc.objects.all())
 
     if query:
         docs = docs.filter(title__icontains=query)
@@ -308,6 +338,7 @@ def knowledge_list(request):
         'categories': categories,
         'query': query,
         'current_category': category,
+        'user_level': get_user_level(request.user),
         'active_page': 'knowledge',
     }
     return render(request, 'knowledge.html', context)
@@ -316,6 +347,9 @@ def knowledge_list(request):
 @login_required
 def doc_detail(request, pk):
     doc = get_object_or_404(KnowledgeDoc, pk=pk)
+    # 游客用户仅可访问已分享的材料
+    if get_user_level(request.user) == 1 and not doc.is_shared:
+        raise Http404
     doc.views += 1
     doc.save()
 
@@ -331,6 +365,7 @@ def doc_detail(request, pk):
     context = {
         'doc': doc,
         'preview_html': preview_html,
+        'user_level': get_user_level(request.user),
         'active_page': 'knowledge',
     }
     return render(request, 'doc_detail.html', context)
@@ -340,6 +375,9 @@ def doc_detail(request, pk):
 def doc_preview(request, pk):
     """提供文档文件流用于在线预览（PDF 使用 pdf.js 渲染）"""
     doc = get_object_or_404(KnowledgeDoc, pk=pk)
+    # 游客用户仅可预览已分享的材料
+    if get_user_level(request.user) == 1 and not doc.is_shared:
+        raise Http404
     if not doc.file:
         raise Http404
     try:
@@ -366,15 +404,26 @@ def doc_download(request, pk):
 
 @login_required
 def script_list(request):
-    scripts = Script.objects.all()
-    context = {'scripts': scripts, 'active_page': 'scripts'}
+    scripts = visible_qs_for_user(request.user, Script.objects.all())
+    context = {
+        'scripts': scripts,
+        'user_level': get_user_level(request.user),
+        'active_page': 'scripts',
+    }
     return render(request, 'scripts.html', context)
 
 
 @login_required
 def script_detail(request, pk):
     script = get_object_or_404(Script, pk=pk)
-    context = {'script': script, 'active_page': 'scripts'}
+    # 游客用户仅可访问已分享的材料
+    if get_user_level(request.user) == 1 and not script.is_shared:
+        raise Http404
+    context = {
+        'script': script,
+        'user_level': get_user_level(request.user),
+        'active_page': 'scripts',
+    }
     return render(request, 'script_detail.html', context)
 
 
@@ -392,7 +441,7 @@ def script_download(request, pk):
 @login_required
 def note_list(request):
     tag = request.GET.get('tag', '')
-    notes = Note.objects.all()
+    notes = visible_qs_for_user(request.user, Note.objects.all())
 
     if tag:
         notes = notes.filter(tag=tag)
@@ -404,6 +453,7 @@ def note_list(request):
     context = {
         'notes': notes_page,
         'current_tag': tag,
+        'user_level': get_user_level(request.user),
         'active_page': 'notes'
     }
     return render(request, 'notes.html', context)
@@ -412,7 +462,14 @@ def note_list(request):
 @login_required
 def note_detail(request, pk):
     note = get_object_or_404(Note, pk=pk)
-    context = {'note': note, 'active_page': 'notes'}
+    # 游客用户仅可访问已分享的材料
+    if get_user_level(request.user) == 1 and not note.is_shared:
+        raise Http404
+    context = {
+        'note': note,
+        'user_level': get_user_level(request.user),
+        'active_page': 'notes'
+    }
     return render(request, 'note_detail.html', context)
 
 
@@ -464,12 +521,14 @@ def doc_upload(request):
             if not doc_type:
                 messages.error(request, '仅支持上传 .docx 或 .pdf 格式的文档。')
             else:
+                is_shared = request.POST.get('is_shared') == 'on'
                 doc = KnowledgeDoc.objects.create(
                     title=title,
                     doc_type=doc_type,
                     file=upload_file,
                     summary=summary,
                     category=category,
+                    is_shared=is_shared,
                 )
                 messages.success(request, '文档上传成功！')
                 return redirect('core:doc_detail', pk=doc.pk)
@@ -497,6 +556,7 @@ def doc_edit(request, pk):
             doc.title = title
             doc.category = category
             doc.summary = summary
+            doc.is_shared = request.POST.get('is_shared') == 'on'
             if upload_file:
                 doc_type = _get_doc_type(upload_file.name)
                 if not doc_type:
@@ -531,6 +591,19 @@ def doc_delete(request, pk):
     return redirect('core:knowledge')
 
 
+@superuser_required
+def doc_share(request, pk):
+    """切换文档分享状态（打上/取消分享标识）"""
+    doc = get_object_or_404(KnowledgeDoc, pk=pk)
+    doc.is_shared = not doc.is_shared
+    doc.save()
+    if doc.is_shared:
+        messages.success(request, f'文档「{doc.title}」已分享，游客用户可预览。')
+    else:
+        messages.success(request, f'已取消分享文档「{doc.title}」。')
+    return redirect('core:knowledge')
+
+
 # ==================== 脚本仓库：上传 / 编辑 ====================
 
 @superuser_required
@@ -546,12 +619,14 @@ def script_upload(request):
         if not name or not upload_file:
             messages.error(request, '脚本名称和文件不能为空。')
         else:
+            is_shared = request.POST.get('is_shared') == 'on'
             script = Script.objects.create(
                 name=name,
                 scene=scene,
                 version=version,
                 tutorial=tutorial,
                 file=upload_file,
+                is_shared=is_shared,
             )
             messages.success(request, '脚本上传成功！')
             return redirect('core:script_detail', pk=script.pk)
@@ -581,6 +656,7 @@ def script_edit(request, pk):
             script.scene = scene
             script.version = version
             script.tutorial = tutorial
+            script.is_shared = request.POST.get('is_shared') == 'on'
             if upload_file:
                 if script.file:
                     script.file.delete(save=False)
@@ -605,6 +681,19 @@ def script_delete(request, pk):
             script.file.delete(save=False)
         script.delete()
         messages.success(request, '脚本已删除。')
+    return redirect('core:scripts')
+
+
+@superuser_required
+def script_share(request, pk):
+    """切换脚本分享状态（打上/取消分享标识）"""
+    script = get_object_or_404(Script, pk=pk)
+    script.is_shared = not script.is_shared
+    script.save()
+    if script.is_shared:
+        messages.success(request, f'脚本「{script.name}」已分享，游客用户可预览。')
+    else:
+        messages.success(request, f'已取消分享脚本「{script.name}」。')
     return redirect('core:scripts')
 
 
@@ -641,12 +730,14 @@ def note_create(request):
         if not title or not content:
             messages.error(request, '笔记标题和内容不能为空。')
         else:
+            is_shared = request.POST.get('is_shared') == 'on'
             note = Note.objects.create(
                 title=title,
                 tag=tag if tag in dict(Note.TAG_CHOICES) else 'tech',
                 intro=intro,
                 content=content,
                 author=request.user.username,
+                is_shared=is_shared,
             )
             # 新增保存为 DOCX 文档
             _save_note_docx(note, title, intro, content, request.user.username)
@@ -682,6 +773,7 @@ def note_edit(request, pk):
             note.tag = tag if tag in dict(Note.TAG_CHOICES) else note.tag
             note.intro = intro
             note.content = content
+            note.is_shared = request.POST.get('is_shared') == 'on'
             # 生成新的 DOCX 文件（使用标题_用户_日期时间的命名方式）
             _save_note_docx(note, title, intro, content, note.author)
             note.save()
@@ -715,4 +807,17 @@ def note_delete(request, pk):
             note.file.delete(save=False)
         note.delete()
         messages.success(request, '笔记已删除。')
+    return redirect('core:notes')
+
+
+@superuser_required
+def note_share(request, pk):
+    """切换笔记分享状态（打上/取消分享标识）"""
+    note = get_object_or_404(Note, pk=pk)
+    note.is_shared = not note.is_shared
+    note.save()
+    if note.is_shared:
+        messages.success(request, f'笔记「{note.title}」已分享，游客用户可预览。')
+    else:
+        messages.success(request, f'已取消分享笔记「{note.title}」。')
     return redirect('core:notes')
